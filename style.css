@@ -46,6 +46,8 @@ body {
   gap: 20px;
   font-size: 0.95rem;
   opacity: 0.9;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 canvas {
@@ -109,6 +111,7 @@ canvas {
   inset: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
   pointer-events: none;
 }
 
