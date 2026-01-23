@@ -7,6 +7,8 @@ const startButton = document.getElementById("startButton");
 const timeLabel = document.getElementById("time");
 const speedLabel = document.getElementById("speed");
 const difficultyLabel = document.getElementById("difficulty");
+const modeLabel = document.getElementById("modeLabel");
+const modeButtons = Array.from(document.querySelectorAll(".mode-button"));
 
 const gameState = {
   running: false,
@@ -14,6 +16,7 @@ const gameState = {
   elapsed: 0,
   speedMultiplier: 1,
   difficultyMultiplier: 1,
+  mode: "duo",
   players: [
     {
       width: 46,
@@ -36,6 +39,7 @@ const gameState = {
 };
 
 const laneGap = canvas.width * 0.12;
+const lanesSolo = [canvas.width * 0.2, canvas.width * 0.5, canvas.width * 0.8];
 const lanesBySide = [
   [canvas.width * 0.25 - laneGap, canvas.width * 0.25, canvas.width * 0.25 + laneGap],
   [canvas.width * 0.75 - laneGap, canvas.width * 0.75, canvas.width * 0.75 + laneGap],
@@ -43,20 +47,34 @@ const lanesBySide = [
 
 const obstacleColors = ["#ff6b6b", "#ffb347", "#b967ff", "#4ddcbf"];
 
+function getActivePlayers() {
+  return gameState.mode === "duo" ? gameState.players : [gameState.players[0]];
+}
+
+function getActiveSides() {
+  return gameState.mode === "duo" ? [0, 1] : [0];
+}
+
+function getLanesForSide(side) {
+  return gameState.mode === "duo" ? lanesBySide[side] : lanesSolo;
+}
+
 function resetGame() {
   gameState.running = false;
   gameState.lastTimestamp = 0;
   gameState.elapsed = 0;
   gameState.speedMultiplier = 1;
   gameState.difficultyMultiplier = 1;
-  gameState.players.forEach((player) => {
+  getActivePlayers().forEach((player) => {
     player.lane = 1;
+    player.side = player.side ?? 0;
   });
   gameState.obstacles = [];
-  gameState.spawnTimers = [0, 0];
+  gameState.spawnTimers = getActiveSides().map(() => 0);
   timeLabel.textContent = "0";
   speedLabel.textContent = gameState.speedMultiplier.toFixed(1);
   difficultyLabel.textContent = gameState.difficultyMultiplier.toFixed(1);
+  modeLabel.textContent = gameState.mode === "duo" ? "Dúo" : "Solo";
 }
 
 function startGame() {
@@ -69,15 +87,18 @@ function startGame() {
 function endGame() {
   gameState.running = false;
   overlayTitle.textContent = "¡Choque!";
-  overlayMessage.textContent = `Cooperación fallida. Sobrevivieron ${Math.floor(
-    gameState.elapsed / 1000
-  )} segundos.`;
+  overlayMessage.textContent =
+    gameState.mode === "duo"
+      ? `Cooperación fallida. Sobrevivieron ${Math.floor(
+          gameState.elapsed / 1000
+        )} segundos.`
+      : `Sobreviviste ${Math.floor(gameState.elapsed / 1000)} segundos.`;
   startButton.textContent = "Reintentar";
   overlay.classList.add("active");
 }
 
 function spawnObstacle(side, avoidLane = null) {
-  const lanes = lanesBySide[side];
+  const lanes = getLanesForSide(side);
   let lane = Math.floor(Math.random() * lanes.length);
   if (avoidLane !== null && lanes.length > 1 && lane === avoidLane) {
     lane = (lane + 1) % lanes.length;
@@ -114,7 +135,8 @@ function update(timestamp) {
 
   const spawnInterval = gameState.baseSpawnInterval / gameState.speedMultiplier;
 
-  gameState.spawnTimers.forEach((timer, sideIndex) => {
+  gameState.spawnTimers.forEach((timer, timerIndex) => {
+    const sideIndex = getActiveSides()[timerIndex];
     const updatedTimer = timer + delta;
     if (updatedTimer >= spawnInterval) {
       spawnObstacle(sideIndex);
@@ -150,8 +172,10 @@ function draw() {
   context.clearRect(0, 0, canvas.width, canvas.height);
 
   drawLaneMarkers();
-  drawDivider();
-  gameState.players.forEach(drawPlayer);
+  if (gameState.mode === "duo") {
+    drawDivider();
+  }
+  getActivePlayers().forEach(drawPlayer);
   gameState.obstacles.forEach(drawObstacle);
 }
 
@@ -160,7 +184,8 @@ function drawLaneMarkers() {
   context.strokeStyle = "rgba(255, 255, 255, 0.08)";
   context.lineWidth = 2;
 
-  lanesBySide.flat().forEach((laneX) => {
+  const lanes = gameState.mode === "duo" ? lanesBySide.flat() : lanesSolo;
+  lanes.forEach((laneX) => {
     context.beginPath();
     context.moveTo(laneX, 0);
     context.lineTo(laneX, canvas.height);
@@ -183,7 +208,7 @@ function drawDivider() {
 }
 
 function drawPlayer(player) {
-  const lanes = lanesBySide[player.side];
+  const lanes = getLanesForSide(player.side);
   const x = lanes[player.lane];
   const y = canvas.height - player.height - 24;
   const width = player.width;
@@ -202,7 +227,7 @@ function drawPlayer(player) {
 }
 
 function drawObstacle(obstacle) {
-  const x = lanesBySide[obstacle.side][obstacle.lane];
+  const x = getLanesForSide(obstacle.side)[obstacle.lane];
   const y = obstacle.y;
   const size = obstacle.size;
 
@@ -216,8 +241,8 @@ function drawObstacle(obstacle) {
 }
 
 function checkCollision() {
-  return gameState.players.some((player) => {
-    const lanes = lanesBySide[player.side];
+  return getActivePlayers().some((player) => {
+    const lanes = getLanesForSide(player.side);
     const playerX = lanes[player.lane];
     const playerY = canvas.height - player.height - 24;
     const playerWidth = player.width;
@@ -244,8 +269,8 @@ function movePlayer(playerIndex, direction) {
     return;
   }
 
-  const player = gameState.players[playerIndex];
-  const lanes = lanesBySide[player.side];
+  const player = getActivePlayers()[playerIndex];
+  const lanes = getLanesForSide(player.side);
 
   if (direction === "left") {
     player.lane = Math.max(0, player.lane - 1);
@@ -263,10 +288,11 @@ function handleTouch(event) {
   const rect = canvas.getBoundingClientRect();
   const touchX = event.clientX - rect.left;
   const touchY = event.clientY - rect.top;
-  const isLeftSide = touchX < rect.width / 2;
-  const playerIndex = isLeftSide ? 0 : 1;
   const halfWidth = rect.width / 2;
-  const localX = isLeftSide ? touchX : touchX - halfWidth;
+  const isLeftSide = touchX < halfWidth;
+  const isDuo = gameState.mode === "duo";
+  const playerIndex = isDuo ? (isLeftSide ? 0 : 1) : 0;
+  const localX = isDuo ? (isLeftSide ? touchX : touchX - halfWidth) : touchX;
   const direction = localX < halfWidth / 2 ? "left" : "right";
 
   if (touchY < rect.height * 0.15) {
@@ -277,6 +303,7 @@ function handleTouch(event) {
 }
 
 function handleKeyboard(event) {
+  const isDuo = gameState.mode === "duo";
   if (event.key === "a" || event.key === "A") {
     movePlayer(0, "left");
   }
@@ -284,10 +311,10 @@ function handleKeyboard(event) {
     movePlayer(0, "right");
   }
   if (event.key === "ArrowLeft") {
-    movePlayer(1, "left");
+    movePlayer(isDuo ? 1 : 0, "left");
   }
   if (event.key === "ArrowRight") {
-    movePlayer(1, "right");
+    movePlayer(isDuo ? 1 : 0, "right");
   }
 }
 
@@ -306,12 +333,37 @@ window.addEventListener("keydown", (event) => {
 });
 
 startButton.addEventListener("click", () => {
-  overlayTitle.textContent = "¡Listos!";
-  overlayMessage.textContent =
-    "P1 usa A/D o la mitad izquierda. P2 usa ←/→ o la mitad derecha.";
+  updateOverlayMessage();
   startButton.textContent = "Jugar";
   startGame();
 });
 
+modeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    gameState.mode = button.dataset.mode === "duo" ? "duo" : "solo";
+    updateModeButtons();
+    updateOverlayMessage();
+    modeLabel.textContent = gameState.mode === "duo" ? "Dúo" : "Solo";
+  });
+});
+
+function updateModeButtons() {
+  modeButtons.forEach((button) => {
+    const isActive = button.dataset.mode === gameState.mode;
+    button.classList.toggle("active", isActive);
+  });
+  document.body.dataset.mode = gameState.mode;
+}
+
+function updateOverlayMessage() {
+  overlayTitle.textContent = gameState.mode === "duo" ? "¡Listos!" : "¡Listo!";
+  overlayMessage.textContent =
+    gameState.mode === "duo"
+      ? "P1 usa A/D o la mitad izquierda. P2 usa ←/→ o la mitad derecha."
+      : "Toca izquierda o derecha (o usa ← →) para esquivar.";
+}
+
 resetGame();
+updateModeButtons();
+updateOverlayMessage();
 overlay.classList.add("active");
