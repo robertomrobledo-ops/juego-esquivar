@@ -3,16 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Esquiva Obstáculos</title>
+    <title>Esquiva Obstáculos: Dúo</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <main class="game">
       <header class="hud">
-        <h1>Esquiva Obstáculos</h1>
+        <h1>Esquiva Obstáculos: Dúo</h1>
         <div class="hud__stats">
           <div>Tiempo: <span id="time">0</span>s</div>
           <div>Velocidad: <span id="speed">1.0</span>x</div>
+          <div>Obstáculos: <span id="difficulty">1</span>x</div>
+          <div>Modo: <span id="modeLabel">Dúo</span></div>
         </div>
       </header>
 
@@ -20,25 +22,36 @@
 
       <div class="overlay" id="overlay">
         <div class="panel">
-          <h2 id="overlayTitle">¡Listo!</h2>
-          <p id="overlayMessage">Toca izquierda o derecha para esquivar los obstáculos.</p>
+          <h2 id="overlayTitle">¡Listos!</h2>
+          <p id="overlayMessage"></p>
+          <div class="mode-select" role="group" aria-label="Selecciona modo de juego">
+            <button type="button" class="mode-button" data-mode="solo">Modo solo</button>
+            <button type="button" class="mode-button" data-mode="duo">Modo dúo</button>
+          </div>
           <button id="startButton">Jugar</button>
         </div>
       </div>
 
       <div class="touch-zones" aria-hidden="true">
-        <div class="touch-zone" data-direction="left">
-          <span>Izquierda</span>
+        <div class="touch-zone" data-player="left" data-direction="left">
+          <span>P1 ←</span>
         </div>
-        <div class="touch-zone" data-direction="right">
-          <span>Derecha</span>
+        <div class="touch-zone" data-player="left" data-direction="right">
+          <span>P1 →</span>
+        </div>
+        <div class="touch-zone" data-player="right" data-direction="left">
+          <span>P2 ←</span>
+        </div>
+        <div class="touch-zone" data-player="right" data-direction="right">
+          <span>P2 →</span>
         </div>
       </div>
     </main>
 
     <footer class="footer">
       <p>
-        Controles: toca la mitad izquierda/derecha de la pantalla (o usa ← → en teclado).
+        Controles: modo solo con ←/→. Modo dúo: P1 usa A/D o mitad izquierda y P2 usa ←/→ o mitad
+        derecha.
       </p>
     </footer>
 
